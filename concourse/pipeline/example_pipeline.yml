@@ -53,7 +53,7 @@ jobs:
                     - |
                       echo "The test is failed"
                       echo "failed" > ../results/((test_status_file_name))
-            - put:
+            - put: code
               params:
                 repository: results
                 rebase: true
@@ -76,7 +76,7 @@ jobs:
                     - -exc
                     - |
                       echo "The test was failed but now is passed"
-            - put:
+            - put: code
               params:
                 repository: results
                 rebase: true
