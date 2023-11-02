@@ -1,0 +1,2 @@
+test_status_file_name: "example_pipeline_status.txt"
+test_status_file_path: "concourse\vars\example_pipeline_status.txt"

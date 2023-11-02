@@ -1,0 +1,84 @@
+resources:
+  - name: concourse_example
+    type: git
+    icon: github
+    source:
+      uri: https://github.com/Xu-Yang-NC/Concourse_Example.git
+      branch: main
+jobs:
+  - name: run-example-job
+    plan:
+      - get: concourse_example
+        trigger: true
+      - load_var: previous_status
+        file: ((test_status_file_path))
+      - task: run-example-test
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: python
+              tag: 3.10.6
+          inputs:
+            - name: concourse_example
+          outputs:
+            - name: results
+          run:
+            path: sh
+            args:
+              - -ecx
+              - |
+                python3 --version
+                cd concourse_example
+                pip install --no-cache-dir -r requirement.txt
+                cd tests
+                pytest
+                echo "succeeded" > ../results/((test_status_file_name))
+        on_failure:
+          when: ((.:previous_status)) == "succeeded"
+          do:
+            - task: log-failure
+              config:
+                platform: linux
+                image_resource:
+                  type: docker-image
+                  source:
+                    repository: curlimages/curl
+                run:
+                  user: root
+                  path: sh
+                  args:
+                    - -exc
+                    - |
+                      echo "The test is failed"
+                      echo "failed" > ../results/((test_status_file_name))
+            - put:
+              params:
+                repository: results
+                rebase: true
+                commit_message: "Update the test status to failed"
+                path: ((test_status_file_path))
+        on_success:
+          when: ((.:previous_status)) == "failed"
+          do:
+            - task: log-failure
+              config:
+                platform: linux
+                image_resource:
+                  type: docker-image
+                  source:
+                    repository: curlimages/curl
+                run:
+                  user: root
+                  path: sh
+                  args:
+                    - -exc
+                    - |
+                      echo "The test was failed but now is passed"
+            - put:
+              params:
+                repository: results
+                rebase: true
+                commit_message: "Update the test status to passed"
+                path: ((test_status_file_path))
